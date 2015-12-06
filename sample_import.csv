@@ -1,0 +1,46 @@
+"Mfr-pn","Mfr","Footprint","Description","Stock"
+"0868AT43A0020E","Johanson Technology",,"Antenna, Ceramic 868MHz, -1dBi",0
+3012,"Keystone","3012_Keystone","Connector, Coin cell retainer 16mm slide in",1
+"CR1632","Panasonic","External Component","Battery, Li coin cell 1632",2
+"CGA3E2X7R1H103K080AA","TDK",603,"Capacitor, MLCC, 10n 50V X7R 10%",3
+"GRM1885C1H330JA01D","Murata",603,"Capacitor, MLCC, 33p 50V COG 5%",4
+"GRM1885C1H3R9CA01D","Murata",603,"Capacitor, MLCC, 3p9 50V COG ±0.25p",5
+"C3216X5R1A106M160AB","TDK",1206,"Capacitor, MLCC 10u 10V X5R 10%",6
+"C1608X7R1C105K080AC","TDK",603,"Capacitor, MLCC, 1u X7R, 10%",7
+"GRM188R71H332KA01D","Murata",603,"Capacitor, MLCC, 3n3 50V X7R 10%",8
+"C1608X7R1H104K080AA","TDK",603,"Capacitor, MLCC, 100n 50V X7R 10%",9
+"GRM21BR71A106KE51L","Murata",805,"Capacitor, MLCC X7R 10u 10V 10%",10
+"C1608C0G1H270J080AA","TDK",603,"Capacitor, MLCC, 27p 50V COG 5%",11
+"202R18W102KV4E","Johanson",1206,"Capacitor, MLCC, 1n 2kV X7R 10%",12
+"BAT54S","Fairchild","sot-23","Diode, Schottky Dual series, 0.2A 30V",13
+"SJ-2509N","CUI","SJ-2509N","Connector, Audio jack 3.5mm Stereo",14
+"GRPB031VWVN-RC","Sullins","3x0.05PTH_1_0.6","Connetor, Header 3 x1, 1.27mm pitch",15
+"LQW18AN12NG00D","Murata",603,"Inductor, 12n, 2%",16
+"LTST-S326KGJRKT","Lite-On","LED_DUAL_3x1","LED, Red/Green RA",17
+"MCR03EZPJ000","Rohm",603,"Link, 0R",18
+"132255-12","Amphenol",132240,"Connector, SMA edge mount 1.6mm PCB",19
+"Si2333DDS","Vishay","SOT-23","Mosfet, P-channel 10V 6A, Logic Level 1.5V",20
+"ERJ-3EKF1001V","Panasonic",603,"Resistor, 1k 1% 100ppm 100mW",21
+"P20KDBCT-ND","Panasonic",603,"Resistor, 20k 0.1% 25ppm 100mW",22
+"ERJ-3EKF1004V","Panasonic",603,"Resistor, 1M 1% 100ppm 100mW",23
+"ERJ-3EKF2202V","Panasonic",603,"Resistor, 22k 1% 100ppm 100mW",24
+"ERA-3AEB103V","Panasonic",603,"Resistor, 10k 0.1% 25ppm 100mW",25
+"ERJ-3EKF1002V","Panasonic",603,"Resistor, 10k 1% 100ppm 100mW",26
+"P1.37KDBCT-ND","Panasonic",603,"Resistor, 1k37 0.1% 25ppm 100mW",27
+"ERJ-3EKF4701V","Panasonic",603,"Resistor, 4k7 1% 100ppm 100mW",28
+"ERJ-3EKF1000V","Panasonic",603,"Resistor, 100R 1% 100ppm 100mW",29
+"ERJ-3EKF2200V","Panasonic",603,"Resistor, 220R 1% 100ppm 100mW",30
+"ERA-3AEB153V","Panasonic",603,"Resistor, 15k 0.1% 25ppm 100mW",31
+"EVQ-PF008K","Panasonic","EVQ-PF","Switch, tactile, side activation",32
+"EVQP6YB55","Panasonic","EVQP6YB55","Switch, dome",33
+"C100F103G","Amphenol","R2","Thermistor, NTC, Material Type F",34
+"nRF905","Nordic","QFN32_5X5_0.5_EXTEND","SOC, RF wireless",35
+"PIC24FJ256DA210-I/PT","Microchip","TQFP100_12_0.4 Oversize","IC, Microcontroller, PIC 16 bit",36
+"25LC1024-I/SM","Microchip","SOIC8","IC, EEPROM 1Mbit SPI",37
+"INA333AIDGKR","TI","MSOP8","IC, Instrumentation amp",38
+"TPS78230DDCR","TI","SOT23-5","IC, LDO, 3.0V, 150mA, Iq=1.3uA",39
+"Si7013-A20-GM","SiLabs","DFN10_3x3_0.5","IC, Humidity and 2-Zone Temperature Sensor",40
+"PCF2129AT/2,518","NXP","SOP20","IC, RTC with built in Xtal, I2C/SPI",41
+"CG0603MLC-3.3LE","Bourns",603,"Varistor, Chipguard low capacitance",42
+"ABM3B-8.000MHZ-B2-T","Abracon","CRYSTAL_SMD_5_3","Crystal, 8MHz 20ppm 18pF",43
+"7B-16.000MAAE-T","TXC","CRYSTAL_SMD_5_3","Crystal, 16MHz 30ppm 16pF",44
