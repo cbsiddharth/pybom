@@ -33,6 +33,16 @@ class Console:
         self.item_db = item_db
         self.bundle_db = bundle_db
 
+    @staticmethod
+    def get_item(mfr_pn):
+        item_list = list()
+        item_list.append(mfr_pn)
+        item_list.append(input('Enter Manufacturer: '))
+        item_list.append(input('Enter Footprint: '))
+        item_list.append(input('Enter Description: '))
+        item_list.append(input('Enter Stock At hand: '))
+        return Item(item_list)
+
     def get_new_item(self):
         mfr_pn = input('Enter Manufacturer Part Number: ')
         has_new = 0
@@ -112,16 +122,6 @@ class Console:
         else:
             print('Key not found')
 
-    @staticmethod
-    def get_item(mfr_pn):
-        item_list = list()
-        item_list.append(mfr_pn)
-        item_list.append(input('Enter Manufacturer: '))
-        item_list.append(input('Enter Footprint: '))
-        item_list.append(input('Enter Description: '))
-        item_list.append(input('Enter Stock At hand: '))
-        return Item(item_list)
-
     def display_loop(self):
         print(mainMenu)
         key = input('Choose an option: ')
@@ -129,7 +129,7 @@ class Console:
         if k == 1:
             self.list_items()
         if k == 2:
-            self.get_item();
+            self.get_new_item()
         if k == 3:
             mfr_pn = input('Enter Mrf-pn: ')
             self.fetch_item(mfr_pn)
