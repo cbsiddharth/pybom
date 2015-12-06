@@ -1,81 +1,94 @@
-import csv
-import os
-import shelve
+#!/usr/bin/env python
+from os import sys
+from pybom import DataBaseManager
+from pybom import Item
+    
+
+message = """
++-----------------------------------------------+
+| pyBOM - A light weight Bill Of Materials (BOM)|
+| manager for electronics stock keeping units   |
++-----------------------------------------------+
+Options:
+    1] List all items
+    2] Add/Update new item
+    3] Fetch existing item
+    4] Save local Changes
+    5] Quit
+-----------------------------------------------
+"""
 
 
-def absPath(fname):
-    __location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
-    return os.path.join(__location__, fname)
+def confirm_action(msg):
+    act = input('%s [Y/n]: ' % msg)
+    if act is 'y' or act is 'Y':
+        return True
+    else:
+        return False
 
 
-class DataBaseManager:
+class Console:
     def __init__(self):
-        self.itemDB = {}
-        self.loadItems()
+        self.db = DataBaseManager()
 
-    def loadItems(self):
-        f = shelve.open('item-db')
-        for key in f:
-            self.itemDB[key] = f[key]
-        f.close()
+    def list_items(self):
+        for item in self.db.item_database:
+            print(self.db.item_database[item])
 
-    def saveChanges(self):
-        f = shelve.open('item-db')
-        f.update(self.itemDB)
-        f.close()
+    def fetch_item(self, key):
+        if key in self.db.item_database:
+            print(self.db.item_database[key])
+        else:
+            print('Key not found')
 
     @staticmethod
-    def purgeRecords():
-        key = input('\nAre you sure you want to purge all records? [Y/n]')
-        if key is 'Y' or key is 'y':
-            f = shelve.open('item-db')
-            f.clear()
-            f.close()
-            print('All records purged successfully!')
+    def get_item(mfr_pn):
+        mfr = input('Enter Manufacturer: ')
+        ft_print = input('Enter Footprint: ')
+        desc = input('Enter Description: ')
+        stock = input('Enter Stock At hand: ')
+        item = Item(mfr_pn, mfr, ft_print, desc, stock)
+        return item
 
-    def updateItemDB(self, head, item):
-        d = {}
-        for key, val in zip(head, item):
-            d[key] = val
+    def display_loop(self):
+        print(message)
+        key = input('Choose an option: ')
+        k = eval(key)
+        if k == 1:
+            self.list_items()
+        if k == 2:
+            mfr_pn = input('Enter Manufacturer Part Number: ')
+            has_new = 0
+            if mfr_pn in self.db.item_database:
+                print('Item already exits!')
+                self.fetch_item(self, mfr_pn)
+                if confirm_action('Do you wish to update it?'):
+                    new = self.get_item(mfr_pn)
+                    has_new = 1
+            else:
+                new = self.get_item(mfr_pn)
+                has_new = 1
 
-        key = d['Mfr-pn']
-        if key not in self.itemDB:
-            print('Adding ->', self.itemDB[key])
-            self.itemDB[key] = Item(mfrpn=d['Mfr-pn'], mfr=d['Mfr'], ftprint=d['Footprint'], desc=d['Description'])
+            if has_new:
+                print('You entered, ')
+                self.fetch_item(mfr_pn)
+                if confirm_action('Save Changes?'):
+                    self.db.item_database[mfr_pn] = new
 
-    def importFromCSV(self, filename):
-        header = []
-        getHead = 1
-        with open(filename, 'r') as f:
-            print('Parsing CSV file %s...' % filename)
-            items = csv.reader(f, delimiter=',', quotechar='"')
-            for row in items:
-                if getHead is 1:
-                    getHead = 0
-                    header = row
-                    if 'Mfr-pn' in header:
-                        continue
-                    else:
-                        break
-                iList = row
-                self.updateItemDB(header, iList)
-        print('Done Importing')
+        if k == 3:
+            mfr_pn = input('Enter Mrf-pn: ')
+            self.fetch_item(mfr_pn)
+        elif k == 4:
+            if confirm_action('Do you wish to save local changes? This cannot be undone.'):
+                self.db.save_changes()
+        elif k == 5:
+            sys.exit(0)
 
-
-class Item:
-    def __init__(self, mfrpn, mfr=None, ftprint=None, desc=None, stock=0):
-        self.mrfpn = mfrpn
-        self.mfr = mfr
-        self.ftprint = ftprint
-        self.desc = desc
-        self.stock = stock
-
-    def __str__(self):
-        return '%s, %s, %s, %s' % (self.mrfpn, self.mfr, self.ftprint, self.desc)
-
+        if input('Press [q] to exit or any key to continue...') == 'q':
+            sys.exit(0)
+        else:
+            self.display_loop()
 
 if __name__ == '__main__':
-    db = DataBaseManager()
-    db.importFromCSV(absPath('sample-bom.csv'))
-    # db.purgeRecords()
-    db.saveChanges()
+    console = Console()
+    console.display_loop()
