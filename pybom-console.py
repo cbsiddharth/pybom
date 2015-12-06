@@ -43,12 +43,13 @@ class Console:
 
     @staticmethod
     def get_item(mfr_pn):
-        mfr = input('Enter Manufacturer: ')
-        ft_print = input('Enter Footprint: ')
-        desc = input('Enter Description: ')
-        stock = input('Enter Stock At hand: ')
-        item = Item(mfr_pn, mfr, ft_print, desc, stock)
-        return item
+        item_list = list()
+        item_list.append(mfr_pn)
+        item_list.append(input('Enter Manufacturer: '))
+        item_list.append(input('Enter Footprint: '))
+        item_list.append(input('Enter Description: '))
+        item_list.append(input('Enter Stock At hand: '))
+        return Item(item_list)
 
     def display_loop(self):
         print(message)
@@ -61,8 +62,8 @@ class Console:
             has_new = 0
             if mfr_pn in self.db.item_database:
                 print('Item already exits!')
-                self.fetch_item(self, mfr_pn)
-                if confirm_action('Do you wish to update it?'):
+                self.fetch_item(mfr_pn)
+                if confirm_action('Do you wish to replace it?'):
                     new = self.get_item(mfr_pn)
                     has_new = 1
             else:
@@ -70,9 +71,11 @@ class Console:
                 has_new = 1
 
             if has_new:
-                print('You entered, ')
+                print('Existing: ', end='')
                 self.fetch_item(mfr_pn)
-                if confirm_action('Save Changes?'):
+                print('Entered:  ', end="")
+                print(new)
+                if confirm_action('Make changes?'):
                     self.db.item_database[mfr_pn] = new
 
         if k == 3:
