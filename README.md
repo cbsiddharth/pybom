@@ -13,12 +13,12 @@ The requirement for this tools has been derived out of real world problems that 
 * `pybom.py` - (TODO) Web version of the same UI to simplify things in production environment.
 
 ### Features/TODOs:
-1) Add/Edit/Update Component (Item) entry.
-2) Incoming / Outgoing stock bulk update.
-3) Create PCB units (Bundles) with component and quantity.
-4) PCB units that can be made with current stock at hand.
-5) Bulk import / export of data.
-6) Support for barcode scanner in stock management.
+1. Add/Edit/Update Component (Item) entry.
+2. Incoming / Outgoing stock bulk update.
+3. Create PCB units (Bundles) with component and quantity.
+4. PCB units that can be made with current stock at hand.
+5. Bulk import / export of data.
+6. Support for barcode scanner in stock management.
 
 ### Note:
 I am not a python developer by profession. So chances are you will see a lot bad decisions in data types and code structuring. So instead of just bitching about it, roll up your sleeves and get yours hands dirty.
