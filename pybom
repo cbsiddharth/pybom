@@ -1,0 +1,250 @@
+#!/usr/bin/python3
+
+import csv
+import os
+import sqlite3
+import time
+from pprint import pprint as pprint
+import tkinter as tk
+from tkinter import ttk
+from tkinter import filedialog
+from tkinter import messagebox
+import sys
+
+class DatabaseManager(object):
+    def __init__(self, db):
+        self.conn = sqlite3.connect(db)
+        self.conn.execute('pragma foreign_keys = on')
+        self.conn.commit()
+        self.cur = self.conn.cursor()
+
+    def query(self, arg):
+        self.cur.execute(arg)
+        self.conn.commit()
+        return self.cur
+
+    def __del__(self):
+        self.conn.close()
+
+class Item:
+    item = {}
+    prototype = ['MFRPN', 'MFR', 'FOOTPRINT', 'DESCRIPTION', 'STOCK']
+
+    def __init__(self, item_list=None):
+        dt = self.make_dict(item_list)
+        self.item = dt
+
+    def __str__(self):
+        return "'%s', '%s', '%s', '%s', %s" % (self.item['MFRPN'], self.item['MFR'],
+                self.item['FOOTPRINT'], self.item['DESCRIPTION'], self.item['STOCK'])
+
+
+    @staticmethod
+    def getPrototype():
+        proto = ['MFRPN', 'MFR', 'FOOTPRINT', 'DESCRIPTION', 'STOCK']
+        return proto
+
+    def getItemList(self):
+        return (self.item['MFRPN'], self.item['MFR'], self.item['FOOTPRINT'],
+                self.item['DESCRIPTION'], self.item['STOCK'])
+    
+    def make_dict(self, item_list):
+        d = {}
+        if len(self.prototype) != len(item_list):
+            print ("Returning Nonw!!")
+            return None
+        else:
+            d = dict(zip(self.prototype, item_list))
+            return d
+
+
+class ItemManager:
+    dbFile = ''
+    inventory = []
+    def __init__(self, parent):
+        self.parent = parent
+    
+    def openDatabase(self, dbFile):
+        db = DatabaseManager(dbFile)
+        try:
+            tables = db.query("SELECT name FROM sqlite_master WHERE type='table';", ).fetchone();
+        except sqlite3.DatabaseError:
+            raise Exception('Invlaid Inventory File!')
+
+        for table in tables:
+            found=1
+            db.query("SELECT * FROM %s;" % table)
+            fieldnames=[f[0] for f in db.cur.description]
+            if len(fieldnames) != len(Item.getPrototype()):
+                found = 0
+            else:
+                for val in Item.getPrototype():
+                    if val not in fieldnames:
+                        found = 0
+            if found == 1:
+                self.inventory.append(table)
+
+        if len(self.inventory) == 0:
+            raise Exception("Doesn't look like a valid inverntory file")
+            return
+        
+        self.dbFile = dbFile
+        
+    def loadInventory(self):
+        db = DatabaseManager(self.dbFile)
+        rows = db.query("SELECT * FROM INVENTORY;").fetchall()
+        return rows
+
+    def createDatabase(self, dbFile):
+        db = DatabaseManager(dbFile)
+        db.query('CREATE TABLE IF NOT EXISTS INVENTORY (MFRPN PRIMARY KEY NOT NULL, MFR TEXT, FOOTPRINT TEXT, DESCRIPTION TEXT, STOCK INT NOT NULL);')
+        self.dbFile = dbFile
+
+    def insertItemToInventory(self, itemList):
+        db = DatabaseManager(self.dbFile)
+        for item in itemList:
+            db.query('INSERT OR IGNORE INTO INVENTORY VALUES (%s);' % str(item))
+
+    def importInventoryFromCSV(self, filename):
+        try:
+            itemList = []
+            with open(filename, 'r') as f:
+                rows = csv.reader(f, delimiter=',', quotechar='"')
+                for row in rows:
+                    if (row != Item.getPrototype()):
+                        itemList.append(Item(row))
+            self.insertItemToInventory(itemList)
+
+        except EnvironmentError:
+            print('File Not Found at CWD: %s' % abs_path())
+
+
+    def exportInventoryToCSV(self, file_name):
+        db = DatabaseManager(self.dbFile)
+        rows = db.query("SELECT * FROM INVENTORY;")
+        with open(abs_path(file_name), 'w') as f:
+            wfd = csv.writer(f, delimiter=',', quotechar='"')
+            wfd.writerow(Item.getPrototype())
+            wfd.writerows(rows)
+
+
+
+class MenuBar(tk.Menu):
+    exportFileName = ""
+    importFileName = ""
+    dbFileName = ""
+    def __init__(self, parent):
+        self.parent = parent
+        tk.Menu.__init__(self, parent)
+
+        filemenu = tk.Menu(self, tearoff=False)
+        self.add_cascade(label="File",underline=0, menu=filemenu)
+        filemenu.add_command(label="New Database",  underline=0, command=self.parent.createDatabase)
+        filemenu.add_command(label="Open Database", underline=0, command=self.parent.openDatabase)
+
+        filemenu.add_separator()
+        filemenu.add_command(label="Exit", underline=1, command=self.quit)
+
+        toolsmenu = tk.Menu(self, tearoff=False)
+        self.add_cascade(label="Tools",underline=0, menu=toolsmenu)
+        toolsmenu.add_command(label="Export Inventory", underline=0, command=self.parent.exportInventory)
+        toolsmenu.add_command(label="Import Inventory", underline=0, command=self.parent.importInventory)
+        
+        helpmenu = tk.Menu(self, tearoff=False)
+        self.add_cascade(label="Help",underline=0, menu=helpmenu)
+        helpmenu.add_command(label="About", underline=0, command=self.showAbout)
+
+    def quit(self):
+        sys.exit(0)
+
+    def showAbout(self):
+        toplevel = tk.Toplevel()
+        toplevel.title("About pyBOM")
+        ABOUT_TEXT = """
+        pyBOM is a light weight, BOM (Bill Of Materials) and
+        inventory management tool for the electronic stock keeping units.
+
+        Siddharth Chandrasekaran
+        siddharth@embedjournal.com"""
+        tk.Label(toplevel, text=ABOUT_TEXT, height=10, width=80).pack(fill='both', padx=20)
+
+
+class Table(tk.Frame):
+    def __init__(self, parent):
+        tk.Frame.__init__(self)
+        self.parent = parent
+        self.createInventoryTable()
+        
+    def createInventoryTable(self):
+        tv = ttk.Treeview(self.parent)
+        ts = ttk.Scrollbar(self.parent)
+
+        ts.configure(command=tv.yview)
+        tv.configure(yscrollcommand=ts.set)
+
+        tv['columns'] = ('MFR', 'FOOTPRINT', 'DESCRIPTION', 'STOCK')
+        tv.heading("#0", text='Manufacturer Part No', anchor='w')
+        tv.column("#0", anchor="w", width=200)
+        tv.heading('MFR', text='Manufacturer')
+        tv.column('MFR', anchor='w', width=150)
+        tv.heading('FOOTPRINT', text='Footprint')
+        tv.column('FOOTPRINT', anchor='w', width=100)
+        tv.heading('DESCRIPTION', text='Description')
+        tv.column('DESCRIPTION', anchor='w', width=350)
+        tv.heading('STOCK', text='Stock')
+        tv.column('STOCK', anchor='e', width=50)
+        tv.pack(side='left', fill='both', expand=1)
+        ts.pack(side='right', fill='y')
+        self.treeview = tv
+
+    def insertItem(self, item):
+        records=item.getItemList()
+        self.treeview.insert('', 'end', text=records[0], values=records[1:])
+
+
+class App(tk.Tk):
+    def __init__(self):
+        tk.Tk.__init__(self)
+        self.nb = ttk.Notebook(self)
+        self.itemMgr = ItemManager(self)
+        self.menubar = MenuBar(self)
+        
+        invFrame = tk.Frame(self)
+        self.table = Table(invFrame)
+        self.nb.add(invFrame, text="Inventory")
+
+        
+        self.nb.pack(fill='both', expand=1, padx=3, pady=3)
+
+        # config stuffs
+        self.config(menu=self.menubar)
+        self.title("PyBom")
+
+    def openDatabase(self):
+        try:
+            self.itemMgr.openDatabase(filedialog.askopenfilename())
+        except Exception as err:
+            self.showError(err)
+            return
+            
+        rows = self.itemMgr.loadInventory()
+        for row in rows:
+            item = Item(row)
+            self.table.insertItem(item)
+    
+    def createDatabase(self):
+        self.itemMgr.createDatabase(filedialog.asksaveasfilename())
+
+    def importInventory(self):
+        self.itemMgr.importInventoryFromCSV(filedialog.askopenfilename())
+    
+    def exportInventory(self):
+        self.itemMgr.exportInventoryToCSV(filedialog.asksaveasfilename())
+
+        
+    def showError(self, msg):
+        messagebox.showinfo("Error", msg)
+        
+if __name__ == "__main__":
+    app=App()
+    app.mainloop()
