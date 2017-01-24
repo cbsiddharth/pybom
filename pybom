@@ -27,34 +27,37 @@ class DatabaseManager(object):
         self.conn.close()
 
 class Item:
-    item = {}
-    prototype = ['MFRPN', 'MFR', 'FOOTPRINT', 'DESCRIPTION', 'STOCK']
-
-    def __init__(self, item_list=None):
-        self.item = self.make_dict(item_list)
+    def __init__(self, itemList=None):
+        self.item = self.make_dict(list(itemList))
 
     def __str__(self):
-        return "'%s', '%s', '%s', '%s', %s" % (self.item['MFRPN'], self.item['MFR'],
-                self.item['FOOTPRINT'], self.item['DESCRIPTION'], self.item['STOCK'])
+        return "'%d', '%s', '%s', '%s', '%s', %s" % ( self.item['ID'], self.item['MFRPN'], self.item['MFR'], self.item['FOOTPRINT'],
+                self.item['DESCRIPTION'], self.item['STOCK'] )
 
     @staticmethod
     def getPrototype():
-        return ['MFRPN', 'MFR', 'FOOTPRINT', 'DESCRIPTION', 'STOCK']
+        return ['ID', 'MFRPN', 'MFR', 'FOOTPRINT', 'DESCRIPTION', 'STOCK']
 
     def getItemList(self):
-        return (self.item['MFRPN'], self.item['MFR'], self.item['FOOTPRINT'],
-                self.item['DESCRIPTION'], self.item['STOCK'])
-    
-    def make_dict(self, item_list):
-        if len(self.prototype) != len(item_list):
+        return [ self.item['ID'], self.item['MFRPN'], self.item['MFR'], self.item['FOOTPRINT'],
+                self.item['DESCRIPTION'], self.item['STOCK'] ]
+
+    def getStrInsertDB(self):
+        return "null, '%s', '%s', '%s', '%s', %s" % ( self.item['MFRPN'], self.item['MFR'], self.item['FOOTPRINT'],
+                self.item['DESCRIPTION'], self.item['STOCK'] )
+
+    def make_dict(self, itemList):
+        if len(Item.getPrototype()) != len(itemList):
+            print ("->" + str(Item.getPrototype()))
+            print ("<-" + str(itemList))
             raise Exception("Inalid item entry!")
         else:
-            return dict(zip(self.prototype, item_list))
+            itemList[0] = int(itemList[0])
+            itemList[5] = int(itemList[5])
+            return dict(zip(Item.getPrototype(), itemList))
 
 
 class ItemManager:
-    dbFile = ''
-    inventory = []
     def __init__(self, parent):
         self.parent = parent
     
@@ -65,6 +68,7 @@ class ItemManager:
         except sqlite3.DatabaseError:
             raise Exception('Invlaid Inventory File!')
 
+        inventory = []
         for table in tables:
             found=1
             db.query("SELECT * FROM %s;" % table)
@@ -76,12 +80,12 @@ class ItemManager:
                     if val not in fieldnames:
                         found = 0
             if found == 1:
-                self.inventory.append(table)
+                inventory.append(table)
 
-        if len(self.inventory) == 0:
+        if len(inventory) == 0:
             raise Exception("Doesn't look like a valid inverntory file")
             return
-        
+
         self.dbFile = dbFile
         
     def loadInventoryTable(self, table):
@@ -93,13 +97,14 @@ class ItemManager:
 
     def createDatabase(self, dbFile):
         db = DatabaseManager(dbFile)
-        db.query('CREATE TABLE IF NOT EXISTS INVENTORY (MFRPN PRIMARY KEY NOT NULL, MFR TEXT, FOOTPRINT TEXT, DESCRIPTION TEXT, STOCK INT NOT NULL);')
+        db.query('CREATE TABLE IF NOT EXISTS INVENTORY (ID INTEGER PRIMARY KEY AUTOINCREMENT,'
+            ' MFRPN NOT NULL, MFR TEXT, FOOTPRINT TEXT, DESCRIPTION TEXT, STOCK INT NOT NULL);')
         self.dbFile = dbFile
 
     def insertItemToInventory(self, itemList):
         db = DatabaseManager(self.dbFile)
         for item in itemList:
-            db.query('INSERT OR IGNORE INTO INVENTORY VALUES (%s);' % str(item))
+            db.query('INSERT OR IGNORE INTO INVENTORY VALUES (%s);' % item.getStrInsertDB())
 
     def importInventoryFromCSV(self, filename):
         try:
@@ -123,7 +128,7 @@ class ItemManager:
             wfd.writerow(Item.getPrototype())
             wfd.writerows(rows)
 
-
+##########################################################################################################3
 
 class MenuBar(tk.Menu):
     exportFileName = ""
@@ -178,9 +183,12 @@ class Table(tk.Frame):
         ts.configure(command=tv.yview)
         tv.configure(yscrollcommand=ts.set)
 
-        tv['columns'] = ('MFR', 'FOOTPRINT', 'DESCRIPTION', 'STOCK')
-        tv.heading("#0", text='Manufacturer Part No', anchor='w')
-        tv.column("#0", anchor="w", width=200)
+        tv['columns'] = ('MFRPN', 'MFR', 'FOOTPRINT', 'DESCRIPTION', 'STOCK')
+        tv.heading("#0", text='ID', anchor='w')
+        tv.column("#0", anchor="w", width=50)
+
+        tv.heading('MFRPN', text='MManufacturer Part No')
+        tv.column('MFRPN', anchor='w', width=200)
         tv.heading('MFR', text='Manufacturer')
         tv.column('MFR', anchor='w', width=150)
         tv.heading('FOOTPRINT', text='Footprint')
@@ -197,13 +205,18 @@ class Table(tk.Frame):
         records=item.getItemList()
         self.treeview.insert('', 'end', text=records[0], values=records[1:])
 
+    def flushRecords(self):
+        self.treeview.delete(*self.treeview.get_children())
+
 
 class App(tk.Tk):
     def __init__(self):
         tk.Tk.__init__(self)
+        self.configure()
         self.nb = ttk.Notebook(self)
         self.itemMgr = ItemManager(self)
         self.menubar = MenuBar(self)
+        self.config(menu=self.menubar)
         
         invFrame = tk.Frame(self)
         self.table = Table(invFrame)
@@ -219,26 +232,26 @@ class App(tk.Tk):
         
         self.nb.pack(fill='both', expand=1, padx=3, pady=3)
 
-        # config stuffs
-        self.config(menu=self.menubar)
-        self.title("PyBom")
-
-    def searchTable(self, searchStr):
-        print ("Search Str: " + searchStr)
-
     def openDatabase(self):
         try:
-            self.itemMgr.openDatabase(filedialog.askopenfilename())
+            name = filedialog.askopenfilename()
+            self.itemMgr.openDatabase(name)
+            self.table.flushRecords()
             self.itemMgr.loadInventoryTable(self.table)
         except Exception as err:
             self.showError(err)
         
     def createDatabase(self):
-        self.itemMgr.createDatabase(filedialog.asksaveasfilename())
+        try:
+            name = filedialog.asksaveasfilename()
+            self.itemMgr.createDatabase(name)
+        except Exception as err:
+            self.showError(err)
 
     def importInventory(self):
         try:
             self.itemMgr.importInventoryFromCSV(filedialog.askopenfilename())
+            self.table.flushRecords()
             self.itemMgr.loadInventoryTable(self.table)
         except Exception as err:
             self.showError(err)
@@ -246,6 +259,11 @@ class App(tk.Tk):
     def exportInventory(self):
         self.itemMgr.exportInventoryToCSV(filedialog.asksaveasfilename())   
         
+    def configure(self):
+        # config stuffs
+        self.title("PyBom")
+        self.geometry("1200x600+100+100")
+
     def showError(self, msg):
         messagebox.showinfo("Error", msg)
         
