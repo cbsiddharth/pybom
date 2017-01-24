@@ -31,31 +31,25 @@ class Item:
     prototype = ['MFRPN', 'MFR', 'FOOTPRINT', 'DESCRIPTION', 'STOCK']
 
     def __init__(self, item_list=None):
-        dt = self.make_dict(item_list)
-        self.item = dt
+        self.item = self.make_dict(item_list)
 
     def __str__(self):
         return "'%s', '%s', '%s', '%s', %s" % (self.item['MFRPN'], self.item['MFR'],
                 self.item['FOOTPRINT'], self.item['DESCRIPTION'], self.item['STOCK'])
 
-
     @staticmethod
     def getPrototype():
-        proto = ['MFRPN', 'MFR', 'FOOTPRINT', 'DESCRIPTION', 'STOCK']
-        return proto
+        return ['MFRPN', 'MFR', 'FOOTPRINT', 'DESCRIPTION', 'STOCK']
 
     def getItemList(self):
         return (self.item['MFRPN'], self.item['MFR'], self.item['FOOTPRINT'],
                 self.item['DESCRIPTION'], self.item['STOCK'])
     
     def make_dict(self, item_list):
-        d = {}
         if len(self.prototype) != len(item_list):
-            print ("Returning Nonw!!")
-            return None
+            raise Exception("Inalid item entry!")
         else:
-            d = dict(zip(self.prototype, item_list))
-            return d
+            return dict(zip(self.prototype, item_list))
 
 
 class ItemManager:
@@ -90,10 +84,12 @@ class ItemManager:
         
         self.dbFile = dbFile
         
-    def loadInventory(self):
+    def loadInventoryTable(self, table):
         db = DatabaseManager(self.dbFile)
         rows = db.query("SELECT * FROM INVENTORY;").fetchall()
-        return rows
+        for row in rows:
+            item = Item(row)
+            table.insertItem(item)
 
     def createDatabase(self, dbFile):
         db = DatabaseManager(dbFile)
@@ -116,13 +112,13 @@ class ItemManager:
             self.insertItemToInventory(itemList)
 
         except EnvironmentError:
-            print('File Not Found at CWD: %s' % abs_path())
+            print('File error: %s' % filename)
 
 
-    def exportInventoryToCSV(self, file_name):
+    def exportInventoryToCSV(self, filename):
         db = DatabaseManager(self.dbFile)
         rows = db.query("SELECT * FROM INVENTORY;")
-        with open(abs_path(file_name), 'w') as f:
+        with open(filename, 'w') as f:
             wfd = csv.writer(f, delimiter=',', quotechar='"')
             wfd.writerow(Item.getPrototype())
             wfd.writerows(rows)
@@ -213,6 +209,13 @@ class App(tk.Tk):
         self.table = Table(invFrame)
         self.nb.add(invFrame, text="Inventory")
 
+        editFrame = tk.Frame(self)
+        sString = tk.StringVar()
+        tk.Label(editFrame, text="Search" ).grid(row=0, column=0, sticky='w', pady=3, padx=10)
+        tk.Entry(editFrame, width=32, textvariable=sString).grid(row=0, column=1, padx=10)
+        ttk.Button(editFrame, text='Search', command=(lambda: self.searchTable(sString.get()))).grid(row=0, column=2, sticky='w', padx=10)
+        editFrame.pack(side='top', pady=20)
+        self.nb.add(editFrame, text="Edit")
         
         self.nb.pack(fill='both', expand=1, padx=3, pady=3)
 
@@ -220,27 +223,28 @@ class App(tk.Tk):
         self.config(menu=self.menubar)
         self.title("PyBom")
 
+    def searchTable(self, searchStr):
+        print ("Search Str: " + searchStr)
+
     def openDatabase(self):
         try:
             self.itemMgr.openDatabase(filedialog.askopenfilename())
+            self.itemMgr.loadInventoryTable(self.table)
         except Exception as err:
             self.showError(err)
-            return
-            
-        rows = self.itemMgr.loadInventory()
-        for row in rows:
-            item = Item(row)
-            self.table.insertItem(item)
-    
+        
     def createDatabase(self):
         self.itemMgr.createDatabase(filedialog.asksaveasfilename())
 
     def importInventory(self):
-        self.itemMgr.importInventoryFromCSV(filedialog.askopenfilename())
-    
-    def exportInventory(self):
-        self.itemMgr.exportInventoryToCSV(filedialog.asksaveasfilename())
+        try:
+            self.itemMgr.importInventoryFromCSV(filedialog.askopenfilename())
+            self.itemMgr.loadInventoryTable(self.table)
+        except Exception as err:
+            self.showError(err)
 
+    def exportInventory(self):
+        self.itemMgr.exportInventoryToCSV(filedialog.asksaveasfilename())   
         
     def showError(self, msg):
         messagebox.showinfo("Error", msg)
