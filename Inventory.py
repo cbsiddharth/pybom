@@ -22,6 +22,9 @@ class DatabaseManager(object):
 
 class Item:
     def __init__(self, itemList=None):
+        if (len(itemList) == 5):
+            # insert dummy valur for ID if not already supplied
+            itemList.insert(0,0)
         self.item = self.make_dict(list(itemList))
 
     def __str__(self):

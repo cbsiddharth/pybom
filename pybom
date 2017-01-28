@@ -1,22 +1,20 @@
 #!/usr/bin/python3
 
-from pprint import pprint as pprint
 import tkinter as tk
 from tkinter import ttk
 from tkinter import filedialog
-import sys
 
 from Inventory import *
 from UIComponents import EditItemPopup, MenuBar
 
 
-class Table(tk.Frame):
+class InventoryTable(tk.Frame):
     def __init__(self, parent, frame):
         tk.Frame.__init__(self)
         self.frame = tk.Frame(frame)
         self.parent = parent
         self.createInventoryTable()
-    
+
     def createInventoryTable(self):
         tv = ttk.Treeview(self.frame)
         ts = ttk.Scrollbar(self.frame)
@@ -28,7 +26,7 @@ class Table(tk.Frame):
         tv.heading("#0", text='ID', anchor='w')
         tv.column("#0", anchor="w", width=50)
 
-        tv.heading('MFRPN', text='MManufacturer Part No')
+        tv.heading('MFRPN', text='Manufacturer Part No')
         tv.column('MFRPN', anchor='w', width=200)
         tv.heading('MFR', text='Manufacturer')
         tv.column('MFR', anchor='w', width=150)
@@ -46,19 +44,28 @@ class Table(tk.Frame):
         self.treeview = tv
 
     def onDoubleClick(self, event):
-        # double click can happen only on one row
-        i = self.treeview.selection()[0]
-        itemID = self.treeview.item(i,"text")
-        sel = self.parent.itemMgr.getItemFromID(itemID)
-        editWindow = EditItemPopup(self, sel)
+        item = self.getSelectedItem()
+        editWindow = EditItemPopup(self, item)
         self.parent.wait_window(editWindow.top)
         if editWindow.mItem is not None:
-            print("Modified Item: "+ str(editWindow.mItem))
+            self.updateSelection(editWindow.mItem)
             self.parent.itemMgr.updateItem(editWindow.mItem)
 
-    def insertItem(self, item):
+    def getSelectedItem(self):
+        curItem = self.treeview.focus()
+        valList = self.treeview.item(curItem)['values']
+        valList.insert(0, self.treeview.item(curItem)['text'])
+        return Item(valList)
+
+    def updateSelection(self, item):
+        curItem = self.treeview.focus()
+        itemID = int(self.treeview.item(curItem,"text")) - 1
+        self.treeview.delete(curItem)
+        self.insertItem(item, itemID)
+
+    def insertItem(self, item, pos='end'):
         records=item.getItemList()
-        self.treeview.insert('', 'end', text=records[0], values=records[1:])
+        self.treeview.insert('', pos, text=records[0], values=records[1:])
 
     def flushRecords(self):
         self.treeview.delete(*self.treeview.get_children())
@@ -74,21 +81,22 @@ class App(tk.Tk):
         self.config(menu=self.menubar)
         
         invFrame = tk.Frame(self)
-        self.table = Table(self, invFrame)
+        self.iTable = InventoryTable(self, invFrame)
         self.nb.add(invFrame, text="Inventory")
 
         editFrame = tk.Frame(self)
         sString = tk.StringVar()
         tk.Label(editFrame, text="Search" ).grid(row=0, column=0, sticky='w', pady=3, padx=10)
         tk.Entry(editFrame, width=32, textvariable=sString).grid(row=0, column=1, padx=10)
-        ttk.Button(editFrame, text='Search', command=(lambda: self.searchTable(sString.get()))).grid(row=0, column=2, sticky='w', padx=10)
+        ttk.Button(editFrame, text='Search', command=(lambda: self.searchTable(
+            sString.get()))).grid(row=0, column=2, sticky='w', padx=10)
         editFrame.pack(side='top', pady=20)
         self.nb.add(editFrame, text="Edit")
         self.nb.pack(fill='both', expand=1, padx=3, pady=3)
 
         try:
             self.itemMgr.openDatabase('item.DB')
-            self.itemMgr.loadInventoryTable(self.table)
+            self.itemMgr.loadInventoryTable(self.iTable)
             print('Loaded defalut DB..')
         except Exception as err:
             print("Default DB error: " + err)
@@ -127,7 +135,8 @@ class App(tk.Tk):
 
     def showError(self, msg):
         messagebox.showinfo("Error", msg)
-        
+
+
 if __name__ == "__main__":
     app=App()
     app.mainloop()

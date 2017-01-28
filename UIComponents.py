@@ -25,7 +25,6 @@ class EditItemPopup(object):
                 self.dicEnt[val].set(oItem.item[val])
                 ent = tk.Entry(formFrame, textvariable=self.dicEnt[val], width=32)
             ent.grid(row=i, column=1, padx=10, pady=10, sticky='nw')
-            i += 1
         formFrame.grid()
 
         buttonFrame = tk.Frame(self.top)
@@ -33,7 +32,10 @@ class EditItemPopup(object):
         tk.Button(buttonFrame, text='Submit', command=self.entryToItem).pack(side='right')
         buttonFrame.pack(side="top", fill="both", expand=True, padx=40, pady=10)
         self.top.bind('<Return>', self.returnKeyHandler)
-        self.top.bind('<Escape>', self.top.destroy)
+        self.top.bind('<Escape>', self.escapeKeyHandler)
+
+    def escapeKeyHandler(self, event):
+        self.top.destroy()
 
     def returnKeyHandler(self, event):
         self.entryToItem()
