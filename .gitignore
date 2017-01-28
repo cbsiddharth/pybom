@@ -3,3 +3,4 @@
 *.dir
 *.DB
 dev/
+__pycache__/

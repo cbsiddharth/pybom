@@ -1,184 +1,25 @@
 #!/usr/bin/python3
 
-import csv
-import os
-import sqlite3
-import time
 from pprint import pprint as pprint
 import tkinter as tk
 from tkinter import ttk
 from tkinter import filedialog
-from tkinter import messagebox
 import sys
 
-class DatabaseManager(object):
-    def __init__(self, db):
-        self.conn = sqlite3.connect(db)
-        self.conn.execute('pragma foreign_keys = on')
-        self.conn.commit()
-        self.cur = self.conn.cursor()
-
-    def query(self, arg):
-        self.cur.execute(arg)
-        self.conn.commit()
-        return self.cur
-
-    def __del__(self):
-        self.conn.close()
-
-class Item:
-    def __init__(self, itemList=None):
-        self.item = self.make_dict(list(itemList))
-
-    def __str__(self):
-        return "'%d', '%s', '%s', '%s', '%s', %s" % ( self.item['ID'], self.item['MFRPN'], self.item['MFR'], self.item['FOOTPRINT'],
-                self.item['DESCRIPTION'], self.item['STOCK'] )
-
-    @staticmethod
-    def getPrototype():
-        return ['ID', 'MFRPN', 'MFR', 'FOOTPRINT', 'DESCRIPTION', 'STOCK']
-
-    def getItemList(self):
-        return [ self.item['ID'], self.item['MFRPN'], self.item['MFR'], self.item['FOOTPRINT'],
-                self.item['DESCRIPTION'], self.item['STOCK'] ]
-
-    def getStrInsertDB(self):
-        return "null, '%s', '%s', '%s', '%s', %s" % ( self.item['MFRPN'], self.item['MFR'], self.item['FOOTPRINT'],
-                self.item['DESCRIPTION'], self.item['STOCK'] )
-
-    def make_dict(self, itemList):
-        if len(Item.getPrototype()) != len(itemList):
-            print ("->" + str(Item.getPrototype()))
-            print ("<-" + str(itemList))
-            raise Exception("Inalid item entry!")
-        else:
-            itemList[0] = int(itemList[0])
-            itemList[5] = int(itemList[5])
-            return dict(zip(Item.getPrototype(), itemList))
-
-
-class ItemManager:
-    def __init__(self, parent):
-        self.parent = parent
-    
-    def openDatabase(self, dbFile):
-        db = DatabaseManager(dbFile)
-        try:
-            tables = db.query("SELECT name FROM sqlite_master WHERE type='table';", ).fetchone();
-        except sqlite3.DatabaseError:
-            raise Exception('Invlaid Inventory File!')
-
-        inventory = []
-        for table in tables:
-            found=1
-            db.query("SELECT * FROM %s;" % table)
-            fieldnames=[f[0] for f in db.cur.description]
-            if len(fieldnames) != len(Item.getPrototype()):
-                found = 0
-            else:
-                for val in Item.getPrototype():
-                    if val not in fieldnames:
-                        found = 0
-            if found == 1:
-                inventory.append(table)
-
-        if len(inventory) == 0:
-            raise Exception("Doesn't look like a valid inverntory file")
-            return
-
-        self.dbFile = dbFile
-        
-    def loadInventoryTable(self, table):
-        db = DatabaseManager(self.dbFile)
-        rows = db.query("SELECT * FROM INVENTORY;").fetchall()
-        for row in rows:
-            item = Item(row)
-            table.insertItem(item)
-
-    def createDatabase(self, dbFile):
-        db = DatabaseManager(dbFile)
-        db.query('CREATE TABLE IF NOT EXISTS INVENTORY (ID INTEGER PRIMARY KEY AUTOINCREMENT,'
-            ' MFRPN NOT NULL, MFR TEXT, FOOTPRINT TEXT, DESCRIPTION TEXT, STOCK INT NOT NULL);')
-        self.dbFile = dbFile
-
-    def insertItemToInventory(self, itemList):
-        db = DatabaseManager(self.dbFile)
-        for item in itemList:
-            db.query('INSERT OR IGNORE INTO INVENTORY VALUES (%s);' % item.getStrInsertDB())
-
-    def importInventoryFromCSV(self, filename):
-        try:
-            itemList = []
-            with open(filename, 'r') as f:
-                rows = csv.reader(f, delimiter=',', quotechar='"')
-                for row in rows:
-                    if (row != Item.getPrototype()):
-                        itemList.append(Item(row))
-            self.insertItemToInventory(itemList)
-
-        except EnvironmentError:
-            print('File error: %s' % filename)
-
-
-    def exportInventoryToCSV(self, filename):
-        db = DatabaseManager(self.dbFile)
-        rows = db.query("SELECT * FROM INVENTORY;")
-        with open(filename, 'w') as f:
-            wfd = csv.writer(f, delimiter=',', quotechar='"')
-            wfd.writerow(Item.getPrototype())
-            wfd.writerows(rows)
-
-##########################################################################################################3
-
-class MenuBar(tk.Menu):
-    exportFileName = ""
-    importFileName = ""
-    dbFileName = ""
-    def __init__(self, parent):
-        self.parent = parent
-        tk.Menu.__init__(self, parent)
-
-        filemenu = tk.Menu(self, tearoff=False)
-        self.add_cascade(label="File",underline=0, menu=filemenu)
-        filemenu.add_command(label="New Database",  underline=0, command=self.parent.createDatabase)
-        filemenu.add_command(label="Open Database", underline=0, command=self.parent.openDatabase)
-
-        filemenu.add_separator()
-        filemenu.add_command(label="Exit", underline=1, command=self.quit)
-
-        toolsmenu = tk.Menu(self, tearoff=False)
-        self.add_cascade(label="Tools",underline=0, menu=toolsmenu)
-        toolsmenu.add_command(label="Export Inventory", underline=0, command=self.parent.exportInventory)
-        toolsmenu.add_command(label="Import Inventory", underline=0, command=self.parent.importInventory)
-        
-        helpmenu = tk.Menu(self, tearoff=False)
-        self.add_cascade(label="Help",underline=0, menu=helpmenu)
-        helpmenu.add_command(label="About", underline=0, command=self.showAbout)
-
-    def quit(self):
-        sys.exit(0)
-
-    def showAbout(self):
-        toplevel = tk.Toplevel()
-        toplevel.title("About pyBOM")
-        ABOUT_TEXT = """
-        pyBOM is a light weight, BOM (Bill Of Materials) and
-        inventory management tool for the electronic stock keeping units.
-
-        Siddharth Chandrasekaran
-        siddharth@embedjournal.com"""
-        tk.Label(toplevel, text=ABOUT_TEXT, height=10, width=80).pack(fill='both', padx=20)
+from Inventory import *
+from UIComponents import EditItemPopup, MenuBar
 
 
 class Table(tk.Frame):
-    def __init__(self, parent):
+    def __init__(self, parent, frame):
         tk.Frame.__init__(self)
+        self.frame = tk.Frame(frame)
         self.parent = parent
         self.createInventoryTable()
-        
+    
     def createInventoryTable(self):
-        tv = ttk.Treeview(self.parent)
-        ts = ttk.Scrollbar(self.parent)
+        tv = ttk.Treeview(self.frame)
+        ts = ttk.Scrollbar(self.frame)
 
         ts.configure(command=tv.yview)
         tv.configure(yscrollcommand=ts.set)
@@ -197,9 +38,23 @@ class Table(tk.Frame):
         tv.column('DESCRIPTION', anchor='w', width=350)
         tv.heading('STOCK', text='Stock')
         tv.column('STOCK', anchor='e', width=50)
+
+        tv.bind("<Double-1>", self.onDoubleClick)
         tv.pack(side='left', fill='both', expand=1)
         ts.pack(side='right', fill='y')
+        self.frame.pack(fill='both', expand=1)
         self.treeview = tv
+
+    def onDoubleClick(self, event):
+        # double click can happen only on one row
+        i = self.treeview.selection()[0]
+        itemID = self.treeview.item(i,"text")
+        sel = self.parent.itemMgr.getItemFromID(itemID)
+        editWindow = EditItemPopup(self, sel)
+        self.parent.wait_window(editWindow.top)
+        if editWindow.mItem is not None:
+            print("Modified Item: "+ str(editWindow.mItem))
+            self.parent.itemMgr.updateItem(editWindow.mItem)
 
     def insertItem(self, item):
         records=item.getItemList()
@@ -219,7 +74,7 @@ class App(tk.Tk):
         self.config(menu=self.menubar)
         
         invFrame = tk.Frame(self)
-        self.table = Table(invFrame)
+        self.table = Table(self, invFrame)
         self.nb.add(invFrame, text="Inventory")
 
         editFrame = tk.Frame(self)
@@ -229,8 +84,14 @@ class App(tk.Tk):
         ttk.Button(editFrame, text='Search', command=(lambda: self.searchTable(sString.get()))).grid(row=0, column=2, sticky='w', padx=10)
         editFrame.pack(side='top', pady=20)
         self.nb.add(editFrame, text="Edit")
-        
         self.nb.pack(fill='both', expand=1, padx=3, pady=3)
+
+        try:
+            self.itemMgr.openDatabase('item.DB')
+            self.itemMgr.loadInventoryTable(self.table)
+            print('Loaded defalut DB..')
+        except Exception as err:
+            print("Default DB error: " + err)
 
     def openDatabase(self):
         try:
