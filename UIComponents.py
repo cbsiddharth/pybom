@@ -1,6 +1,6 @@
 import tkinter as tk
 from Inventory import Item
-from tkinter import messagebox
+import sys
 
 class EditItemPopup(object):
     mItem = None
@@ -29,7 +29,7 @@ class EditItemPopup(object):
 
         buttonFrame = tk.Frame(self.top)
         tk.Button(buttonFrame, text='Cancel', command=self.top.destroy).pack(side='left')
-        tk.Button(buttonFrame, text='Submit', command=self.entryToItem).pack(side='right')
+        tk.Button(buttonFrame, text='Save', command=self.entryToItem).pack(side='right')
         buttonFrame.pack(side="top", fill="both", expand=True, padx=40, pady=10)
         self.top.bind('<Return>', self.returnKeyHandler)
         self.top.bind('<Escape>', self.escapeKeyHandler)

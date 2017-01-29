@@ -3,6 +3,7 @@
 import tkinter as tk
 from tkinter import ttk
 from tkinter import filedialog
+from tkinter import messagebox
 
 from Inventory import *
 from UIComponents import EditItemPopup, MenuBar
@@ -16,7 +17,14 @@ class InventoryTable(tk.Frame):
         self.createInventoryTable()
 
     def createInventoryTable(self):
-        tv = ttk.Treeview(self.frame)
+        actionFrame = tk.Frame(self.frame)
+        tk.Button(actionFrame, text='Add', command=self.addButtonHandler).pack(side='left', padx=10)
+        tk.Button(actionFrame, text='Edit', command=self.editButtonHandler).pack(side='left', padx=10)
+        tk.Button(actionFrame, text='Delete', command=self.deleteButtonHandler).pack(side='left', padx=10)
+        tk.Button(actionFrame, text='Export', command=self.exportButtonHandler).pack(side='left', padx=10)
+        actionFrame.pack(side='top', pady=10)
+
+        self.treeview = tv = ttk.Treeview(self.frame)
         ts = ttk.Scrollbar(self.frame)
 
         ts.configure(command=tv.yview)
@@ -37,35 +45,88 @@ class InventoryTable(tk.Frame):
         tv.heading('STOCK', text='Stock')
         tv.column('STOCK', anchor='e', width=50)
 
-        tv.bind("<Double-1>", self.onDoubleClick)
+        tv.bind("<Double-1>", self.editButtonHandler)
+        tv.bind("<Escape>", self.dropSelection)
+        tv.bind("<Delete>", self.deleteButtonHandler)
         tv.pack(side='left', fill='both', expand=1)
         ts.pack(side='right', fill='y')
         self.frame.pack(fill='both', expand=1)
-        self.treeview = tv
 
-    def onDoubleClick(self, event):
-        item = self.getSelectedItem()
+    def dropSelection(self, event):
+        for index in self.treeview.selection():
+            self.treeview.selection_remove(index)
+
+    def editButtonHandler(self, event=None):
+        index = self.treeview.selection()[0]
+        item = self.getSelectedItems()[0]
+        self.editItem(index, item)
+
+    def deleteButtonHandler(self, event=None):
+        selection = self.treeview.selection()
+        if not selection:
+            return
+        result = messagebox.askquestion("Delete", "Are You Sure? "
+            "The selected items will be removed permanently!", icon='warning')
+        if result == 'yes':
+            # first remove from DB
+            items = self.getSelectedItems()
+            itemIDList = []
+            for item in items:
+                itemIDList.append(item.item['ID'])
+            self.parent.itemMgr.deleteItems(tuple(itemIDList))
+            # now remove from table
+            for index in selection:
+                self.treeview.delete(index)
+
+    def exportButtonHandler(self):
+        try:
+            file = filedialog.asksaveasfilename()
+            itemList = self.getSelectedItems()
+            self.parent.itemMgr.exportItemsToCSV(file, itemList)
+        except Exception as err:
+            messagebox.showinfo("Error", err)
+
+    def addButtonHandler(self):
+        item = Item()
         editWindow = EditItemPopup(self, item)
         self.parent.wait_window(editWindow.top)
         if editWindow.mItem is not None:
-            self.updateSelection(editWindow.mItem)
+            try:
+                newID = self.parent.itemMgr.insertItem(editWindow.mItem)
+                editWindow.mItem.item['ID'] = newID
+                self.insertItem('end', editWindow.mItem)
+            except Exception as err:
+                messagebox.showinfo("Error", err)
+
+    def editItem(self, index, item):
+        editWindow = EditItemPopup(self, item)
+        self.parent.wait_window(editWindow.top)
+        if editWindow.mItem is not None:
+            self.updateSelection(index, editWindow.mItem)
             self.parent.itemMgr.updateItem(editWindow.mItem)
 
-    def getSelectedItem(self):
-        curItem = self.treeview.focus()
-        valList = self.treeview.item(curItem)['values']
-        valList.insert(0, self.treeview.item(curItem)['text'])
-        return Item(valList)
+    def getSelectedItems(self):
+        selList = self.treeview.selection()
+        itemList = []
+        for sel in selList:
+            valList = []
+            valList = self.treeview.item(sel)['values']
+            valList.insert(0, self.treeview.item(sel)['text'])
+            itemList.append(Item(valList))
+        return itemList
 
-    def updateSelection(self, item):
-        curItem = self.treeview.focus()
-        itemID = int(self.treeview.item(curItem,"text")) - 1
-        self.treeview.delete(curItem)
-        self.insertItem(item, itemID)
+    def updateSelection(self, index, item):
+        pos = self.treeview.index(index)
+        self.treeview.delete(index)
+        self.insertItem(pos, item)
 
-    def insertItem(self, item, pos='end'):
-        records=item.getItemList()
+    def insertItem(self, pos, item):
+        records=item.getRecords()
         self.treeview.insert('', pos, text=records[0], values=records[1:])
+
+    def insertItemList(self, itemList):
+        for item in itemList:
+            self.insertItem('end', item)
 
     def flushRecords(self):
         self.treeview.delete(*self.treeview.get_children())
@@ -96,17 +157,19 @@ class App(tk.Tk):
 
         try:
             self.itemMgr.openDatabase('item.DB')
-            self.itemMgr.loadInventoryTable(self.iTable)
+            itemList = self.itemMgr.getInventoryItemList()
+            self.iTable.insertItemList(itemList)
             print('Loaded defalut DB..')
         except Exception as err:
-            print("Default DB error: " + err)
+            print("Default DB error: " + str(err))
 
     def openDatabase(self):
         try:
             name = filedialog.askopenfilename()
             self.itemMgr.openDatabase(name)
             self.table.flushRecords()
-            self.itemMgr.loadInventoryTable(self.table)
+            itemList = self.itemMgr.getInventoryItemList()
+            self.iTable.insertItemList(itemList)
         except Exception as err:
             self.showError(err)
         
@@ -120,8 +183,9 @@ class App(tk.Tk):
     def importInventory(self):
         try:
             self.itemMgr.importInventoryFromCSV(filedialog.askopenfilename())
-            self.table.flushRecords()
-            self.itemMgr.loadInventoryTable(self.table)
+            self.iTable.flushRecords()
+            itemList = self.itemMgr.getInventoryItemList()
+            self.iTable.insertItemList(itemList)
         except Exception as err:
             self.showError(err)
 

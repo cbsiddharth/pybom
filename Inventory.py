@@ -1,7 +1,7 @@
 import csv
 import sqlite3
 import tkinter as tk
-import sys
+import os.path
 
 
 class DatabaseManager(object):
@@ -21,15 +21,16 @@ class DatabaseManager(object):
 
 
 class Item:
-    def __init__(self, itemList=None):
-        if (len(itemList) == 5):
-            # insert dummy valur for ID if not already supplied
-            itemList.insert(0,0)
-        self.item = self.make_dict(list(itemList))
+    def __init__(self, recordList=None):
+        if recordList is None:
+            recordList = [ 0, '', '', '', '', 0 ]
+        self.item = self.make_dict(list(recordList))
 
     def __str__(self):
-        return "'%d', '%s', '%s', '%s', '%s', %s" % ( self.item['ID'], self.item['MFRPN'], self.item['MFR'], self.item['FOOTPRINT'],
-                self.item['DESCRIPTION'], self.item['STOCK'] )
+        return "'%d', '%s', '%s', '%s', '%s', %s" % (
+                self.item['ID'], self.item['MFRPN'],
+                self.item['MFR'], self.item['FOOTPRINT'],
+                self.item['DESCRIPTION'], self.item['STOCK'])
 
     @staticmethod
     def getPrototype():
@@ -46,23 +47,26 @@ class Item:
                 return False
         return True
 
-    def getItemList(self):
-        return [ self.item['ID'], self.item['MFRPN'], self.item['MFR'], self.item['FOOTPRINT'],
+    def getRecords(self):
+        return [ self.item['ID'], self.item['MFRPN'], 
+                self.item['MFR'], self.item['FOOTPRINT'],
                 self.item['DESCRIPTION'], self.item['STOCK'] ]
 
-    def getStrInsertDB(self):
-        return "null, '%s', '%s', '%s', '%s', %s" % ( self.item['MFRPN'], self.item['MFR'], self.item['FOOTPRINT'],
+    def getRecordStr(self):
+        return "'%s', '%s', '%s', '%s', %s" % ( self.item['MFRPN'],
+                self.item['MFR'], self.item['FOOTPRINT'],
                 self.item['DESCRIPTION'], self.item['STOCK'] )
 
-    def make_dict(self, itemList):
-        if len(Item.getPrototype()) != len(itemList):
-            print ("->" + str(Item.getPrototype()))
-            print ("<-" + str(itemList))
+    def make_dict(self, recordList):
+        proto = Item.getPrototype()
+        if len(proto) != len(recordList):
+            print ("->" + str(proto))
+            print ("<-" + str(recordList))
             raise Exception("Inalid item entry!")
         else:
-            itemList[0] = int(itemList[0])
-            itemList[5] = int(itemList[5])
-            return dict(zip(Item.getPrototype(), itemList))
+            recordList[0] = int(recordList[0])
+            recordList[5] = int(recordList[5])
+            return dict(zip(proto, recordList))
 
 
 class ItemManager:
@@ -70,6 +74,8 @@ class ItemManager:
         self.parent = parent
     
     def openDatabase(self, dbFile):
+        if not os.path.isfile(dbFile):
+            raise Exception('File not found')
         db = DatabaseManager(dbFile)
         try:
             tables = db.query("SELECT name FROM sqlite_master WHERE type='table';", ).fetchone()
@@ -96,23 +102,38 @@ class ItemManager:
 
         self.dbFile = dbFile
         
-    def loadInventoryTable(self, table):
+    def getInventoryItemList(self):
+        itemList = []
         db = DatabaseManager(self.dbFile)
         rows = db.query("SELECT * FROM INVENTORY;").fetchall()
         for row in rows:
-            item = Item(row)
-            table.insertItem(item)
+            itemList.append(Item(row))
+        return itemList
 
     def createDatabase(self, dbFile):
         db = DatabaseManager(dbFile)
-        db.query('CREATE TABLE IF NOT EXISTS INVENTORY (ID INTEGER PRIMARY KEY AUTOINCREMENT,'
-            ' MFRPN NOT NULL, MFR TEXT, FOOTPRINT TEXT, DESCRIPTION TEXT, STOCK INT NOT NULL);')
+        db.query('CREATE TABLE IF NOT EXISTS INVENTORY (ID INTEGER PRIMARY KEY AUTOINCREMENT, '
+            'MFRPN NOT NULL, MFR TEXT, FOOTPRINT TEXT, DESCRIPTION TEXT, STOCK INT NOT NULL, '
+            'UNIQUE (ID, MFRPN) ON CONFLICT IGNORE);')
         self.dbFile = dbFile
 
     def insertItemToInventory(self, itemList):
         db = DatabaseManager(self.dbFile)
         for item in itemList:
-            db.query('INSERT OR IGNORE INTO INVENTORY VALUES (%s);' % item.getStrInsertDB())
+            # first value is null so that auto increment happens
+            db.query('INSERT INTO INVENTORY VALUES (null, %s);' % item.getRecordStr())
+
+
+    def insertItem(self, item):
+        idStr = '0'
+        db = DatabaseManager(self.dbFile)
+        try:
+            db.query('INSERT INTO INVENTORY VALUES (null, %s);' % item.getRecordStr())
+            idStr = db.query("SELECT ID FROM INVENTORY WHERE MFRPN='%s';" % item.item['MFRPN']).fetchone()[0]
+        except sqlite3.DatabaseError:
+            raise Exception('Unable to insert item')
+
+        return int(idStr)
 
     def getItemFromID(self, itemID):
         db = DatabaseManager(self.dbFile)
@@ -137,6 +158,11 @@ class ItemManager:
         query += ' WHERE ID = %d;' % item.item['ID'] 
         db.query(query)
 
+    def deleteItems(self, itemIDs):
+        idStr = ",".join([str(ID) for ID in itemIDs])
+        db = DatabaseManager(self.dbFile)
+        db.query('DELETE FROM INVENTORY WHERE ID in (%s)' % idStr)
+
     def importInventoryFromCSV(self, filename):
         try:
             itemList = []
@@ -150,6 +176,12 @@ class ItemManager:
         except EnvironmentError:
             print('File error: %s' % filename)
 
+    def exportItemsToCSV(self, filename, itemList):
+        with open(filename, 'w') as f:
+            wfd = csv.writer(f, delimiter=',', quotechar='"')
+            wfd.writerow(Item.getPrototype())
+            for item in itemList:
+                wfd.writerow(item.getRecords())
 
     def exportInventoryToCSV(self, filename):
         db = DatabaseManager(self.dbFile)
