@@ -2,6 +2,7 @@ import tkinter as tk
 from Inventory import Item
 import sys
 
+
 class EditItemPopup(object):
     mItem = None
     dicEnt = {}
