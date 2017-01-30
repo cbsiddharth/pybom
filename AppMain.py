@@ -4,7 +4,7 @@ from tkinter import filedialog
 from tkinter import messagebox
 
 from Inventory import *
-from UIComponents import *
+from UIComponents import MenuBar
 from Table import *
 
 
@@ -17,9 +17,8 @@ class App(tk.Tk):
         self.menubar = MenuBar(self)
         self.config(menu=self.menubar)
         
-        invFrame = tk.Frame(self)
-        self.iTable = InventoryTable(self, invFrame)
-        self.nb.add(invFrame, text="Inventory")
+        self.iTable = InventoryTable(self)
+        self.nb.add(self.iTable, text="Inventory")
 
         editFrame = tk.Frame(self)
         sString = tk.StringVar()

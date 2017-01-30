@@ -1,7 +1,8 @@
 import tkinter as tk
-from Inventory import Item
 import sys
 
+from Inventory import Item
+from UIComponents import *
 
 class EditItemPopup(object):
     mItem = None
@@ -18,13 +19,9 @@ class EditItemPopup(object):
         valList.pop(0) # remove item ID
         for i, val in zip(range(5), valList):
             tk.Label(formFrame, text=val).grid(row=i, column=0, padx=10, pady=10, sticky='ne')
-            if val is 'DESCRIPTION':
-                self.dicEnt[val] = ent = tk.Text(formFrame, height=3, width=36)
-                self.dicEnt[val].insert(tk.END, oItem.item[val])
-            else:
-                self.dicEnt[val] = tk.StringVar()
-                self.dicEnt[val].set(oItem.item[val])
-                ent = tk.Entry(formFrame, textvariable=self.dicEnt[val], width=32)
+            self.dicEnt[val] = tk.StringVar()
+            self.dicEnt[val].set(oItem.item[val])
+            ent = tk.Entry(formFrame, textvariable=self.dicEnt[val], width=32)
             ent.grid(row=i, column=1, padx=10, pady=10, sticky='nw')
         formFrame.grid()
 
@@ -42,12 +39,12 @@ class EditItemPopup(object):
         self.entryToItem()
 
     def entryToItem(self):
-        valList = [ self.oItem.item['ID'] ]
-        valList.append(self.dicEnt['MFRPN'].get())
-        valList.append(self.dicEnt['MFR'].get())
-        valList.append(self.dicEnt['FOOTPRINT'].get())
-        valList.append(self.dicEnt['DESCRIPTION'].get('1.0', tk.END).rstrip())
-        valList.append(self.dicEnt['STOCK'].get())
+        for proto in Item.getPrototype():
+            if proto in self.dicEnt.keys():
+                value = self.dicEnt[proto].get()
+                valList.append(value)
+        # insert not editable fields.
+        valList.insert(0, self.oItem.item['ID'])
         new = Item(valList)
         if not Item.compare(self.oItem, new):
             self.mItem = new

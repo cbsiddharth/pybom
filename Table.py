@@ -3,26 +3,25 @@ from tkinter import ttk
 from tkinter import filedialog
 from tkinter import messagebox
 
-from Inventory import *
-
+from Inventory import Item
+from UIComponents import EditItemPopup
 
 class InventoryTable(tk.Frame):
-    def __init__(self, parent, frame):
+    def __init__(self, parent):
         tk.Frame.__init__(self)
-        self.frame = tk.Frame(frame)
         self.parent = parent
         self.createInventoryTable()
 
     def createInventoryTable(self):
-        actionFrame = tk.Frame(self.frame)
+        actionFrame = tk.Frame(self)
         tk.Button(actionFrame, text='Add', command=self.addButtonHandler).pack(side='left', padx=10)
         tk.Button(actionFrame, text='Edit', command=self.editButtonHandler).pack(side='left', padx=10)
         tk.Button(actionFrame, text='Delete', command=self.deleteButtonHandler).pack(side='left', padx=10)
         tk.Button(actionFrame, text='Export', command=self.exportButtonHandler).pack(side='left', padx=10)
         actionFrame.pack(side='top', pady=10)
 
-        self.treeview = tv = ttk.Treeview(self.frame)
-        ts = ttk.Scrollbar(self.frame)
+        self.treeview = tv = ttk.Treeview(self)
+        ts = ttk.Scrollbar(self)
 
         ts.configure(command=tv.yview)
         tv.configure(yscrollcommand=ts.set)
@@ -47,7 +46,6 @@ class InventoryTable(tk.Frame):
         tv.bind("<Delete>", self.deleteButtonHandler)
         tv.pack(side='left', fill='both', expand=1)
         ts.pack(side='right', fill='y')
-        self.frame.pack(fill='both', expand=1)
 
     def dropSelection(self, event):
         for index in self.treeview.selection():
